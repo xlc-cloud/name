@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>南昌中学 </title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 自定义Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            neutral: '#F5F7FA',
+            dark: '#1D2129',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .search-input-focus {
+        @apply ring-2 ring-primary/30 border-primary;
+      }
+      .card-hover {
+        @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+      }
+    }
+  </style>
+  
+  <style>
+    /* 全局样式 */
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #F9FAFC;
+    }
+    
+    /* 动画效果 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    
+    .result-item {
+      opacity: 0;
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    
+    .result-item:nth-child(1) { animation-delay: 0.1s; }
+    .result-item:nth-child(2) { animation-delay: 0.2s; }
+    .result-item:nth-child(3) { animation-delay: 0.3s; }
+    .result-item:nth-child(4) { animation-delay: 0.4s; }
+    .result-item:nth-child(5) { animation-delay: 0.5s; }
+    
+    /* 加载动画 */
+    .loader {
+      border-top-color: #165DFF;
+      animation: spinner 0.8s linear infinite;
+    }
+    
+    @keyframes spinner {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-8 md:py-16">
+    <!-- 搜索区域 -->
+    <section class="max-w-2xl mx-auto mb-12 fade-in">
+      <div class="bg-white rounded-xl shadow-md p-6 md:p-8">
+        <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-6 text-center">
+          查询地址
+        </h2>
+        
+        <form id="searchForm" class="space-y-4">
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+              <i class="fa fa-user"></i>
+            </span>
+            <input 
+              type="text" 
+              id="nameInput" 
+              name="name" 
+              placeholder="人名" 
+              required
+              class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:search-input-focus transition-all duration-200 text-dark"
+            >
+          </div>
+          
+          <button 
+            type="submit" 
+            id="searchBtn"
+            class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+          >
+            <i class="fa fa-search"></i>
+            <span>开始查询</span>
+          </button>
+        </form>
+        
+        <div class="mt-4 text-center text-sm text-gray-500">
+          <p></p>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 结果区域 -->
+    <section id="resultsSection" class="max-w-3xl mx-auto hidden fade-in">
+      <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-primary/10 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-primary flex items-center">
+            <i class="fa fa-results mr-2"></i>
+            <span>查询结果</span>
+            <span id="resultCount" class="ml-2 bg-primary text-white text-xs px-2 py-1 rounded-full"></span>
+          </h2>
+          <button id="clearBtn" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <i class="fa fa-refresh mr-1"></i> 清空
+          </button>
+        </div>
+        
+        <div id="loadingIndicator" class="hidden p-12 text-center">
+          <div class="inline-block w-10 h-10 border-4 border-gray-200 rounded-full loader"></div>
+          <p class="mt-4 text-gray-500">正在查询，请稍候...</p>
+        </div>
+        
+        <div id="noResults" class="hidden p-12 text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+            <i class="fa fa-search-minus text-2xl text-gray-400"></i>
+          </div>
+          <h3 class="text-lg font-medium text-gray-700 mb-2">未找到匹配结果</h3>
+          <p class="text-gray-500">请尝试其他人名或检查输入是否正确</p>
+        </div>
+        
+        <div id="resultsList" class="divide-y divide-gray-100">
+          <!-- 结果将通过JS动态插入 -->
+        </div>
+      </div>
+    </section>
+    
+    
+  </main>
+
+
+
+  <!-- JavaScript -->
+  <script>
+    // 等待DOM加载完成
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchForm = document.getElementById('searchForm');
+      const nameInput = document.getElementById('nameInput');
+      const searchBtn = document.getElementById('searchBtn');
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsList = document.getElementById('resultsList');
+      const resultCount = document.getElementById('resultCount');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const noResults = document.getElementById('noResults');
+      const clearBtn = document.getElementById('clearBtn');
+      
+      // 表单提交事件
+      searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = nameInput.value.trim();
+        
+        if (name) {
+          searchAddress(name);
+        }
+      });
+      
+      // 清空结果
+      clearBtn.addEventListener('click', function() {
+        resultsList.innerHTML = '';
+        resultsSection.classList.add('hidden');
+        nameInput.value = '';
+        nameInput.focus();
+      });
+      
+      // 搜索地址函数
+      async function searchAddress(name) {
+        // 显示加载状态
+        resultsSection.classList.remove('hidden');
+        resultsList.innerHTML = '';
+        loadingIndicator.classList.remove('hidden');
+        noResults.classList.add('hidden');
+        resultCount.textContent = '';
+        
+        try {
+          // 这里需要后端配合读取name.txt文件
+          // 实际部署时需要替换为真实的API端点
+          const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: name })
+          });
+          
+          if (!response.ok) {
+            throw new Error('服务器错误');
+          }
+          
+          const data = await response.json();
+          loadingIndicator.classList.add('hidden');
+          
+          if (data.results && data.results.length > 0) {
+            // 显示结果数量
+            resultCount.textContent = `${data.results.length} 条结果`;
+            
+            // 渲染结果列表
+            data.results.forEach((item, index) => {
+              const resultItem = document.createElement('div');
+              resultItem.className = 'p-6 result-item';
+              resultItem.style.animationDelay = `${index * 0.1}s`;
+              
+              resultItem.innerHTML = `
+                <div class="flex items-start">
+                  <div class="flex-shrink-0 bg-primary/10 rounded-full p-3 mr-4">
+                    <i class="fa fa-map-marker text-primary"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-semibold text-dark">${item.name}</h3>
+                    <p class="text-gray-600 mt-1 flex items-center">
+                      <i class="fa fa-home mr-2 text-gray-400"></i>
+                      ${item.address}
+                    </p>
+                  </div>
+                </div>
+              `;
+              
+              resultsList.appendChild(resultItem);
+            });
+          } else {
+            // 没有找到结果
+            noResults.classList.remove('hidden');
+          }
+        } catch (error) {
+          loadingIndicator.classList.add('hidden');
+          
+          // 显示错误信息
+          const errorItem = document.createElement('div');
+          errorItem.className = 'p-6 text-center text-red-500';
+          errorItem.innerHTML = `
+            <i class="fa fa-exclamation-circle mr-2"></i>
+            查询出错: ${error.message}
+          `;
+          resultsList.appendChild(errorItem);
+        }
+      }
+      
+      // 输入框焦点效果
+      nameInput.addEventListener('focus', function() {
+        this.parentElement.classList.add('scale-[1.02]');
+        this.parentElement.style.transition = 'transform 0.2s ease';
+      });
+      
+      nameInput.addEventListener('blur', function() {
+        this.parentElement.classList.remove('scale-[1.02]');
+      });
+      
+      // 支持回车键查询
+      nameInput.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+          searchBtn.click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
