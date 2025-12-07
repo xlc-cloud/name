@@ -427,7 +427,7 @@
           // 显示提示
           if (blacklistedCount > 0) {
             showToast(
-              `找到 ${results.length} 条记录，其中 ${blacklistedCount} 条为黑名单记录（地址已隐藏）`, 
+              `找到 ${results.length} 条记录，其中 ${blacklistedCount} 条地址已隐藏`, 
               'warning'
             );
           } else if (results.length === 1) {
@@ -479,7 +479,7 @@
         }, 1000);
         
         // 显示提示
-        showToast(`"${name}" 已被列入黑名单，禁止全名查询`, 'error');
+        showToast(`"${name}" 禁止查询`, 'error');
       }
       
       // 显示加载状态
