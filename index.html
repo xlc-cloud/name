@@ -19,7 +19,8 @@
             secondary: '#36CFFB',
             neutral: '#F5F7FA',
             dark: '#1D2129',
-            light: '#86909C'
+            light: '#86909C',
+            danger: '#F53F3F'
           },
           fontFamily: {
             inter: ['Inter', 'system-ui', 'sans-serif'],
@@ -41,6 +42,12 @@
       .transition-custom {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
+      .bg-danger-soft {
+        background-color: rgba(245, 63, 63, 0.1);
+      }
+      .text-danger-soft {
+        color: rgba(245, 63, 63, 0.8);
+      }
     }
   </style>
   
@@ -60,6 +67,11 @@
       to { opacity: 1; transform: translateY(0); }
     }
     
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
     .animate-fade-in {
       animation: fadeIn 0.4s ease forwards;
     }
@@ -74,6 +86,10 @@
     .result-item:nth-child(3) { animation-delay: 0.3s; }
     .result-item:nth-child(4) { animation-delay: 0.4s; }
     .result-item:nth-child(5) { animation-delay: 0.5s; }
+    
+    .animate-pulse {
+      animation: pulse 1s ease-in-out infinite;
+    }
     
     /* 滚动条美化 */
     ::-webkit-scrollbar {
@@ -132,9 +148,15 @@
           </div>
         </div>
         
-        <div class="flex items-center text-sm text-light">
-          <i class="fa fa-info-circle mr-2 text-primary/70"></i>
-          <span>数据来源于本地 name.txt 文件，格式为：姓名 住址（每行一条记录）</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-start text-sm text-light">
+            <i class="fa fa-info-circle mr-2 text-primary/70 mt-0.5"></i>
+            <span>数据来源于本地 name.txt 文件，格式为：姓名 住址（每行一条记录）</span>
+          </div>
+          <div class="flex items-start text-sm text-light">
+            <i class="fa fa-exclamation-circle mr-2 text-danger/70 mt-0.5"></i>
+            <span>black.txt 中的名字禁止全名查询，格式为：每行一个名字（直接换行分隔）</span>
+          </div>
         </div>
       </form>
     </section>
@@ -160,13 +182,25 @@
           </div>
           <p class="text-light text-lg">未找到匹配的记录</p>
         </div>
+        
+        <!-- 禁止查询提示（默认隐藏） -->
+        <div id="forbiddenMessage" class="hidden p-12 text-center bg-danger-soft rounded-2xl m-4">
+          <div class="inline-block p-4 bg-danger/10 rounded-full mb-4">
+            <i class="fa fa-ban text-2xl text-danger"></i>
+          </div>
+          <h3 class="text-danger text-xl font-semibold mb-2">该人名不允许被搜索</h3>
+          <p class="text-danger-soft text-lg mb-4">系统将在 <span id="countdown" class="font-bold text-danger">3</span> 秒后自动关闭页面...</p>
+          <button id="cancelClose" class="px-4 py-2 border border-danger text-danger rounded-lg hover:bg-danger-soft transition-custom">
+            取消关闭
+          </button>
+        </div>
       </div>
     </section>
     
     <!-- 提示信息 -->
     <section id="infoSection" class="mt-8 bg-neutral rounded-xl p-4 text-center text-light">
       <i class="fa fa-lightbulb-o mr-2 text-primary/70"></i>
-      <span>提示：请确保 name.txt 文件位于网站根目录，格式正确（姓名 住址，每行一条）</span>
+      <span>提示：1. 全名匹配黑名单名字将禁止查询并关闭页面；2. 部分匹配时地址显示"不允许被搜索"</span>
     </section>
   </div>
   
@@ -178,31 +212,58 @@
       const resultList = document.getElementById('resultList');
       const resultCount = document.getElementById('resultCount');
       const noResult = document.getElementById('noResult');
+      const forbiddenMessage = document.getElementById('forbiddenMessage');
+      const countdown = document.getElementById('countdown');
+      const cancelClose = document.getElementById('cancelClose');
       const clearResult = document.getElementById('clearResult');
+      
+      // 存储黑名单数据
+      let blacklist = [];
+      // 倒计时计时器
+      let countdownTimer = null;
+      // 是否取消关闭
+      let cancelCloseFlag = false;
+      
+      // 页面加载时读取黑名单
+      loadBlacklist();
       
       // 表单提交处理
       searchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const name = nameInput.value.trim();
-        if (!name) {
+        const searchName = nameInput.value.trim();
+        if (!searchName) {
           showToast('请输入要查询的人名', 'warning');
           nameInput.focus();
           return;
+        }
+        
+        // 重置状态
+        cancelCloseFlag = false;
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
         }
         
         // 显示加载状态
         showLoading();
         
         try {
-          // 读取本地 name.txt 文件
-          const results = await searchNameInFile(name);
+          // 检查是否是黑名单全名匹配
+          if (blacklist.includes(searchName.trim())) {
+            // 显示禁止查询提示并倒计时关闭页面
+            showForbiddenMessage(searchName);
+            return;
+          }
           
-          // 显示结果
-          displayResults(results, name);
+          // 读取地址数据并查询
+          const results = await searchNameInFile(searchName);
+          
+          // 显示结果（处理部分匹配黑名单的情况）
+          displayResults(results, searchName);
         } catch (error) {
           console.error('查询出错:', error);
-          showToast('查询失败，请确保 name.txt 文件存在且格式正确', 'error');
+          showToast('查询失败，请确保相关文件存在且格式正确', 'error');
           hideLoading();
         }
       });
@@ -211,10 +272,18 @@
       clearResult.addEventListener('click', () => {
         resultList.innerHTML = '';
         resultList.appendChild(noResult);
+        resultList.appendChild(forbiddenMessage);
         noResult.classList.remove('hidden');
+        forbiddenMessage.classList.add('hidden');
         resultCount.textContent = '0';
         nameInput.value = '';
         nameInput.focus();
+        
+        // 清除倒计时
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+        }
       });
       
       // 按回车键触发查询
@@ -224,14 +293,44 @@
         }
       });
       
-      // 搜索文件中的姓名
-      async function searchNameInFile(name) {
+      // 取消关闭页面
+      cancelClose.addEventListener('click', () => {
+        cancelCloseFlag = true;
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+        }
+        forbiddenMessage.classList.add('hidden');
+        noResult.classList.remove('hidden');
+        resultCount.textContent = '0';
+      });
+      
+      // 加载黑名单
+      async function loadBlacklist() {
         try {
-          // 注意：在浏览器环境中，由于安全限制，无法直接访问本地文件系统
-          // 以下代码仅为演示，实际使用时需要通过服务器端读取文件
-          // 或使用文件上传控件让用户选择文件
+          const response = await fetch('black.txt');
           
-          // 模拟从服务器获取文件内容（实际项目中替换为真实接口）
+          if (response.ok) {
+            const content = await response.text();
+            // 处理黑名单：去除空行和前后空格，转为数组
+            blacklist = content.split('\n')
+              .map(name => name.trim())
+              .filter(name => name !== '');
+            
+            console.log('黑名单加载成功，共', blacklist.length, '个名字');
+          } else {
+            console.warn('未找到 black.txt 文件，黑名单功能未启用');
+            showToast('未找到 black.txt 文件，黑名单功能未启用', 'info');
+          }
+        } catch (error) {
+          console.error('加载黑名单出错:', error);
+          showToast('加载黑名单失败，黑名单功能未启用', 'warning');
+        }
+      }
+      
+      // 搜索文件中的姓名
+      async function searchNameInFile(searchName) {
+        try {
           const response = await fetch('name.txt');
           
           if (!response.ok) {
@@ -252,11 +351,13 @@
             const address = line.substring(spaceIndex + 1).trim();
             
             // 模糊匹配姓名（不区分大小写）
-            if (personName.toLowerCase().includes(name.toLowerCase())) {
+            if (personName.toLowerCase().includes(searchName.toLowerCase())) {
               results.push({
                 id: index + 1,
                 name: personName,
-                address: address
+                address: address,
+                // 标记是否在黑名单中
+                isBlacklisted: blacklist.includes(personName)
               });
             }
           });
@@ -275,22 +376,35 @@
         
         // 清空之前的结果
         resultList.innerHTML = '';
+        resultList.appendChild(noResult);
+        resultList.appendChild(forbiddenMessage);
         
         if (results.length === 0) {
           // 没有找到结果
-          resultList.appendChild(noResult);
           noResult.classList.remove('hidden');
+          forbiddenMessage.classList.add('hidden');
           resultCount.textContent = '0';
           showToast(`未找到"${searchName}"相关的记录`, 'info');
         } else {
           // 显示找到的结果
           noResult.classList.add('hidden');
+          forbiddenMessage.classList.add('hidden');
           resultCount.textContent = results.length;
           
           results.forEach((result, index) => {
             const resultItem = document.createElement('div');
-            resultItem.className = 'result-item border-b border-gray-100 last:border-0 p-4 hover:bg-neutral/50 transition-custom';
+            resultItem.className = `result-item border-b border-gray-100 last:border-0 p-4 hover:bg-neutral/50 transition-custom ${result.isBlacklisted ? 'bg-danger-soft/30' : ''}`;
             resultItem.style.animationDelay = `${index * 0.1}s`;
+            
+            // 处理地址显示：黑名单名字显示"不允许被搜索"
+            const displayAddress = result.isBlacklisted 
+              ? '<span class="text-danger font-medium">不允许被搜索</span>'
+              : result.address || '未填写地址';
+            
+            // 黑名单名字添加标记
+            const blacklistBadge = result.isBlacklisted 
+              ? '<span class="ml-2 px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">黑名单</span>'
+              : '';
             
             resultItem.innerHTML = `
               <div class="flex items-start">
@@ -298,10 +412,13 @@
                   ${index + 1}
                 </div>
                 <div class="flex-1">
-                  <h3 class="font-semibold text-lg mb-1">${result.name}</h3>
+                  <h3 class="font-semibold text-lg mb-1 flex items-center">
+                    ${result.name}
+                    ${blacklistBadge}
+                  </h3>
                   <div class="flex items-center text-light">
-                    <i class="fa fa-map-marker mr-2"></i>
-                    <p class="break-words">${result.address || '未填写地址'}</p>
+                    <i class="fa fa-map-marker mr-2 ${result.isBlacklisted ? 'text-danger' : ''}"></i>
+                    <p class="break-words">${displayAddress}</p>
                   </div>
                 </div>
               </div>
@@ -313,13 +430,65 @@
           // 滚动到结果区域
           resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           
+          // 统计黑名单匹配数
+          const blacklistedCount = results.filter(item => item.isBlacklisted).length;
+          
           // 显示提示
-          if (results.length === 1) {
+          if (blacklistedCount > 0) {
+            showToast(
+              `找到 ${results.length} 条记录，其中 ${blacklistedCount} 条为黑名单记录（地址已隐藏）`, 
+              'warning'
+            );
+          } else if (results.length === 1) {
             showToast(`找到 1 条"${searchName}"的记录`, 'success');
           } else {
             showToast(`找到 ${results.length} 条"${searchName}"的记录（重名）`, 'success');
           }
         }
+      }
+      
+      // 显示禁止查询提示并倒计时关闭页面
+      function showForbiddenMessage(name) {
+        hideLoading();
+        resultSection.classList.remove('hidden');
+        
+        // 清空结果列表，显示禁止提示
+        resultList.innerHTML = '';
+        resultList.appendChild(forbiddenMessage);
+        forbiddenMessage.classList.remove('hidden');
+        noResult.classList.add('hidden');
+        resultCount.textContent = '0';
+        
+        // 重置倒计时
+        let seconds = 3;
+        countdown.textContent = seconds;
+        
+        // 开始倒计时
+        countdownTimer = setInterval(() => {
+          seconds--;
+          countdown.textContent = seconds;
+          
+          if (seconds <= 0 || cancelCloseFlag) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+            
+            if (!cancelCloseFlag) {
+              // 自动关闭页面
+              window.close();
+              
+              // 如果是浏览器环境，尝试刷新或关闭
+              if (!window.opener && window.close) {
+                // 某些浏览器不允许关闭非脚本打开的页面，这里做兼容处理
+                setTimeout(() => {
+                  window.location.href = 'about:blank';
+                }, 1000);
+              }
+            }
+          }
+        }, 1000);
+        
+        // 显示提示
+        showToast(`"${name}" 已被列入黑名单，禁止全名查询`, 'error');
       }
       
       // 显示加载状态
@@ -369,7 +538,7 @@
             icon = 'fa-info-circle';
         }
         
-        toast.className = `toast fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center transform transition-custom translate-y-0 opacity-100`;
+        toast.className = `toast fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center transform transition-custom translate-y-0 opacity-100 z-50`;
         toast.innerHTML = `
           <i class="fa ${icon} mr-2"></i>
           <span>${message}</span>
