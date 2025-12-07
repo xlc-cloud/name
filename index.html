@@ -119,8 +119,7 @@
       <div class="inline-block p-3 bg-primary/10 rounded-full mb-4">
         <i class="fa fa-search text-primary text-2xl"></i>
       </div>
-      <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-dark mb-2">人名住址查询系统</h1>
-      <p class="text-light text-lg max-w-2xl mx-auto">输入人名即可查询对应的家庭住址，支持重名查询，将显示所有匹配结果</p>
+      <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-dark mb-2">地址查询</h1>
     </header>
     
     <!-- 查询区域 -->
@@ -136,7 +135,7 @@
               type="text" 
               id="nameInput" 
               class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-custom"
-              placeholder="例如：张三"
+              placeholder="人名"
               autocomplete="off"
             >
             <button 
@@ -150,12 +149,8 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="flex items-start text-sm text-light">
-            <i class="fa fa-info-circle mr-2 text-primary/70 mt-0.5"></i>
-            <span>数据来源于本地 name.txt 文件，格式为：姓名 住址（每行一条记录）</span>
-          </div>
-          <div class="flex items-start text-sm text-light">
             <i class="fa fa-exclamation-circle mr-2 text-danger/70 mt-0.5"></i>
-            <span>black.txt 中的名字禁止全名查询，格式为：每行一个名字（直接换行分隔）</span>
+            <span>黑名单已启用</span>
           </div>
         </div>
       </form>
@@ -198,10 +193,6 @@
     </section>
     
     <!-- 提示信息 -->
-    <section id="infoSection" class="mt-8 bg-neutral rounded-xl p-4 text-center text-light">
-      <i class="fa fa-lightbulb-o mr-2 text-primary/70"></i>
-      <span>提示：1. 全名匹配黑名单名字将禁止查询并关闭页面；2. 部分匹配时地址显示"不允许被搜索"</span>
-    </section>
   </div>
   
   <script>
